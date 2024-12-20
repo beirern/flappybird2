@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<link rel="stylesheet" type="text/css" href="static/style.css" />
+<link id="favicon" rel="icon" type="image/x-icon" href="static/favicon.ico">
+<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+<script src="static/script.js"></script>
+
+<head>
+	<title>Flappy Bird</title>
+</head>
+
+<body id="body">
+	<div>
+		<h1 align="center">Flappy Bird</h1>
+	</div>
+
+	<div id="grid" class="square">
+		<div class="button_div">
+			<button class="button" hx-get="/game" hx-target="#body">Single Player</button>
+		</div>
+		<div class="button_div">
+			<button class="button">AI</button>
+		</div>
+	</div>
+</body>
+
+</html>
