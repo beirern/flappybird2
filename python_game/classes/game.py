@@ -34,6 +34,8 @@ class Game:
       self.update()
       self.render()
       self.dt = self.clock.tick(60) / 1000
+    
+    return self.score, self.distance
 
   def update(self):
     proposed_y = self.character.rect.y + self.character.dy * self.dt + 0.5 * (self.dt ** 2) * self.character.gravity
