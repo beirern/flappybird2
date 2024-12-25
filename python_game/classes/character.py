@@ -9,3 +9,6 @@ class Character:
         self.dy: int = 200
         self.gravity: int = 300
         self.rect = Rect(100.0, 150.0, 20.0, 20.0)
+
+    def jump(self) -> None:
+        self.dy = -275

@@ -36,7 +36,8 @@ class Game:
                         if event.key == pygame.K_ESCAPE:
                             self.running = False
                         elif event.key == pygame.K_SPACE:
-                            self.character.dy = -275
+                            self.character.jump()
+
             self.update()
             self.render()
             self.dt = self.clock.tick(60) / 1000
