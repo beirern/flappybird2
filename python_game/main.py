@@ -1,5 +1,5 @@
-from pygame import quit
 from classes import Game
+from pygame import quit
 
 game = Game()
 score, distance = game.run()
