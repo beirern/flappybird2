@@ -1,13 +1,16 @@
 import random
 
 import pygame
-from classes import Character, Pipe, Screen
+
+from .character import Character
+from .pipe import Pipe
+from .screen import Screen
 
 
 class Game:
     """The Game"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pygame.init()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -15,12 +18,12 @@ class Game:
         self.screen = Screen(1280, 720)
         pygame.display.set_caption("flappy bird")
         self.score = 0
-        self.distance = 0
+        self.distance = 0.0
 
         self.character = Character()
         self.pipes = [Pipe(600, 200, 400, 320), Pipe(1000, 50, 500, 220)]
 
-    def run(self):
+    def run(self) -> tuple[int, int]:
         while self.running:
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
@@ -37,10 +40,10 @@ class Game:
             self.render()
             self.dt = self.clock.tick(60) / 1000
 
-        return self.score, self.distance
+        return self.score, int(self.distance)
 
-    def update(self):
-        proposed_y = (
+    def update(self) -> None:
+        proposed_y = int(
             self.character.rect.y
             + self.character.dy * self.dt
             + 0.5 * (self.dt**2) * self.character.gravity
@@ -53,12 +56,12 @@ class Game:
         else:
             self.character.rect.y = proposed_y
 
-        self.character.dy += 300 * self.dt
+        self.character.dy += int(300 * self.dt)
         if self.pipes[0].topRect.x + self.pipes[0].topRect.width < 0:
             self.pipes.pop(0)
         for pipe in self.pipes:
-            pipe.topRect.x += pipe.dx * self.dt
-            pipe.bottomRect.x += pipe.dx * self.dt
+            pipe.topRect.x += int(pipe.dx * self.dt)
+            pipe.bottomRect.x += int(pipe.dx * self.dt)
 
         if self.character.rect.colliderect(
             self.pipes[0].topRect
@@ -86,7 +89,7 @@ class Game:
         self.distance -= self.pipes[0].dx * self.dt
         pygame.event.pump()
 
-    def render(self):
+    def render(self) -> None:
         self.screen.surface.fill("white")
         self.character.rect = pygame.draw.rect(
             self.screen.surface, "green", self.character.rect
