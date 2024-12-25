@@ -6,8 +6,8 @@ class Pipe:
 
     NUM_PIPES: int = 8
     PIPE_WIDTH: int = 100
-    MIN_PIPE_DISTANCE: int = 150
-    MAX_PIPE_DISTANCE: int = 200
+    MIN_PIPE_DISTANCE: int = 180
+    MAX_PIPE_DISTANCE: int = 220
     MIN_GAP: int = 120
     MAX_GAP: int = 250
 

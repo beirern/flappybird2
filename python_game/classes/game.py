@@ -21,7 +21,8 @@ class Game:
         self.distance = 0.0
 
         self.character = Character()
-        self.pipes = [Pipe(600, 200, 400, 320), Pipe(1000, 50, 500, 220)]
+        self.pipes: list[Pipe] = []
+        self.init_pipes()
 
     def run(self) -> tuple[int, int]:
         while self.running:
@@ -56,7 +57,7 @@ class Game:
         else:
             self.character.rect.y = proposed_y
 
-        self.character.dy += int(300 * self.dt)
+        self.character.dy += int(400 * self.dt)
         if self.pipes[0].topRect.x + self.pipes[0].topRect.width < 0:
             self.pipes.pop(0)
         for pipe in self.pipes:
@@ -64,8 +65,8 @@ class Game:
             pipe.bottomRect.x += int(pipe.dx * self.dt)
 
         if self.character.rect.colliderect(
-            self.pipes[0].topRect
-        ) or self.character.rect.colliderect(self.pipes[0].bottomRect):
+            self.nearest_collidable_pipe().topRect
+        ) or self.character.rect.colliderect(self.nearest_collidable_pipe().bottomRect):
             self.running = False
 
         if len(self.pipes) < Pipe.NUM_PIPES:
@@ -112,3 +113,27 @@ class Game:
         self.screen.surface.blit(distance_text, distance_text_rect)
         pygame.display.update()
         pygame.display.flip()
+
+    def init_pipes(self) -> None:
+        for _ in range(Pipe.NUM_PIPES):
+            self.add_pipe()
+
+    def add_pipe(self) -> None:
+        if len(self.pipes) > 0:
+            x = self.pipes[-1].topRect.right + random.randint(
+                Pipe.MIN_PIPE_DISTANCE, Pipe.MAX_PIPE_DISTANCE
+            )
+        else:
+            x = 450
+        gap = random.randint(Pipe.MIN_GAP, Pipe.MAX_GAP)
+        topheight = random.randint(0, self.screen.height - gap)
+        bottomy = topheight + gap
+        bottomheight = self.screen.height - bottomy
+        self.pipes.append(Pipe(x, topheight, bottomy, bottomheight))
+
+    def nearest_collidable_pipe(self) -> Pipe:
+        for i in range(len(self.pipes)):
+            if self.pipes[i].topRect.right > self.character.rect.left:
+                return self.pipes[i]
+
+        return self.pipes[0]
