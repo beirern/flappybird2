@@ -16,7 +16,9 @@ class Pipe:
     MIN_HEIGHT_DIFF: int = 50
     MAX_HEIGHT_DIFF: int = 300
 
-    def __init__(self, x: int, topheight: int, bottomy: int, bottomheight: int, id: int):
+    def __init__(
+        self, x: int, topheight: int, bottomy: int, bottomheight: int, id: int
+    ):
         self.topRect = Rect(x, 0, self.PIPE_WIDTH, topheight)
         self.bottomRect = Rect(x, bottomy, self.PIPE_WIDTH, bottomheight)
 

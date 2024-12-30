@@ -1,11 +1,10 @@
 import random
 
+import numpy as np
 import pygame
 
-import numpy as np
-
-from .character import Character
 from .agent import Agent
+from .character import Character
 from .pipe import Pipe
 from .screen import Screen
 
@@ -56,7 +55,11 @@ class Game:
             self.dt = self.clock.tick(60) / 1000
 
         if self.train:
-            best_agent = sorted(self.agents, key=lambda agent: agent.distance ** (agent.score + 1), reverse=True)[0]
+            best_agent = sorted(
+                self.agents,
+                key=lambda agent: agent.distance ** (agent.score + 1),
+                reverse=True,
+            )[0]
             score = best_agent.score
             distance = int(best_agent.distance)
         else:
@@ -68,15 +71,24 @@ class Game:
         if self.train:
             nearest_pipe = self.nearest_collidable_pipe()
             for agent in self.agents:
-                if agent.model.call(np.array([[
-                    agent.dy,
-                    nearest_pipe.topRect.bottom,
-                    nearest_pipe.bottomRect.top,
-                    nearest_pipe.topRect.left,
-                    nearest_pipe.topRect.right,
-                    0,
-                    self.screen.height
-                ]]))[0][0] > 0.5:
+                if (
+                    agent.model.call(
+                        np.array(
+                            [
+                                [
+                                    agent.dy,
+                                    nearest_pipe.topRect.bottom,
+                                    nearest_pipe.bottomRect.top,
+                                    nearest_pipe.topRect.left,
+                                    nearest_pipe.topRect.right,
+                                    0,
+                                    self.screen.height,
+                                ]
+                            ]
+                        )
+                    )[0][0]
+                    > 0.5
+                ):
                     agent.jump()
                 agent.move(self.dt, self.screen)
 
@@ -96,7 +108,9 @@ class Game:
             self.character.move(self.dt, self.screen)
             if self.character.rect.colliderect(
                 self.nearest_collidable_pipe().topRect
-            ) or self.character.rect.colliderect(self.nearest_collidable_pipe().bottomRect):
+            ) or self.character.rect.colliderect(
+                self.nearest_collidable_pipe().bottomRect
+            ):
                 self.character.alive = False
             elif (
                 self.character.rect.left > self.pipes[0].topRect.right
@@ -116,7 +130,7 @@ class Game:
 
         if len(self.pipes) < Pipe.NUM_PIPES:
             self.add_pipe()
-        
+
         if self.train:
             if not any([agent.alive for agent in self.agents]):
                 self.running = False
@@ -167,11 +181,17 @@ class Game:
             id = self.pipes[-1].id + 1
             # Choose if next pipe will be above or below previous one
             if random.randint(0, 1) == 0:
-                proposed_height = random.randint(self.pipes[-1].topRect.bottom - Pipe.MAX_HEIGHT_DIFF, self.pipes[-1].topRect.bottom - Pipe.MIN_HEIGHT_DIFF)
+                proposed_height = random.randint(
+                    self.pipes[-1].topRect.bottom - Pipe.MAX_HEIGHT_DIFF,
+                    self.pipes[-1].topRect.bottom - Pipe.MIN_HEIGHT_DIFF,
+                )
                 if proposed_height < 1:
                     proposed_height = 1
             else:
-                proposed_height = random.randint(self.pipes[-1].topRect.bottom + Pipe.MIN_HEIGHT_DIFF, self.pipes[-1].topRect.bottom + Pipe.MAX_HEIGHT_DIFF)
+                proposed_height = random.randint(
+                    self.pipes[-1].topRect.bottom + Pipe.MIN_HEIGHT_DIFF,
+                    self.pipes[-1].topRect.bottom + Pipe.MAX_HEIGHT_DIFF,
+                )
                 if proposed_height > (self.screen.height - gap) - 1:
                     proposed_height = self.screen.height - gap - 1
             topheight = proposed_height
