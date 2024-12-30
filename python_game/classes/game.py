@@ -2,7 +2,10 @@ import random
 
 import pygame
 
+import numpy as np
+
 from .character import Character
+from .agent import Agent
 from .pipe import Pipe
 from .screen import Screen
 
@@ -10,7 +13,7 @@ from .screen import Screen
 class Game:
     """The Game"""
 
-    def __init__(self) -> None:
+    def __init__(self, train) -> None:
         pygame.init()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -19,8 +22,12 @@ class Game:
         pygame.display.set_caption("flappy bird")
         self.score = 0
         self.distance = 0.0
+        self.train = train
 
-        self.character = Character()
+        if train:
+            self.agents = [Agent() for _ in range(0, 20)]
+        else:
+            self.character = Character()
         self.pipes: list[Pipe] = []
         self.init_pipes()
 
@@ -28,74 +35,106 @@ class Game:
         while self.running:
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
-            for event in pygame.event.get():
-                match event.type:
-                    case pygame.QUIT:
-                        self.running = False
-                    case pygame.KEYDOWN:
-                        if event.key == pygame.K_ESCAPE:
+            if self.train:
+                for event in pygame.event.get():
+                    match event.type:
+                        case pygame.QUIT:
                             self.running = False
-                        elif event.key == pygame.K_SPACE:
-                            self.character.jump()
+            else:
+                for event in pygame.event.get():
+                    match event.type:
+                        case pygame.QUIT:
+                            self.running = False
+                        case pygame.KEYDOWN:
+                            if event.key == pygame.K_ESCAPE:
+                                self.running = False
+                            elif event.key == pygame.K_SPACE:
+                                self.character.jump()
 
             self.update()
             self.render()
             self.dt = self.clock.tick(60) / 1000
 
-        return self.score, int(self.distance)
+        if self.train:
+            best_agent = sorted(self.agents, key=lambda agent: agent.distance ** (agent.score + 1), reverse=True)[0]
+            score = best_agent.score
+            distance = int(best_agent.distance)
+        else:
+            score = self.character.score
+            distance = int(self.character.distance)
+        return score, distance
 
     def update(self) -> None:
-        proposed_y = int(
-            self.character.rect.y
-            + self.character.dy * self.dt
-            + 0.5 * (self.dt**2) * self.character.gravity
-        )
+        if self.train:
+            nearest_pipe = self.nearest_collidable_pipe()
+            for agent in self.agents:
+                if agent.model.call(np.array([[
+                    agent.dy,
+                    nearest_pipe.topRect.bottom,
+                    nearest_pipe.bottomRect.top,
+                    nearest_pipe.topRect.left,
+                    nearest_pipe.topRect.right,
+                    0,
+                    self.screen.height
+                ]]))[0][0] > 0.5:
+                    agent.jump()
+                agent.move(self.dt, self.screen)
 
-        if proposed_y < 0:
-            self.character.rect.y = 0
-        elif proposed_y + self.character.rect.height > self.screen.height:
-            self.character.rect.y = self.screen.height - self.character.rect.height
+                if agent.alive:
+                    if agent.rect.colliderect(
+                        nearest_pipe.topRect
+                    ) or agent.rect.colliderect(nearest_pipe.bottomRect):
+                        agent.alive = False
+                    elif (
+                        agent.rect.left > self.pipes[0].topRect.right
+                        and agent.last_pipe_passed != self.pipes[0].id
+                    ):
+                        agent.last_pipe_passed = self.pipes[0].id
+                        agent.score += 1
+                    agent.distance -= self.pipes[0].dx * self.dt
         else:
-            self.character.rect.y = proposed_y
+            self.character.move(self.dt, self.screen)
+            if self.character.rect.colliderect(
+                self.nearest_collidable_pipe().topRect
+            ) or self.character.rect.colliderect(self.nearest_collidable_pipe().bottomRect):
+                self.character.alive = False
+            elif (
+                self.character.rect.left > self.pipes[0].topRect.right
+                and self.character.last_pipe_passed != self.pipes[0].id
+            ):
+                self.character.score += 1
+                self.character.last_pipe_passed = self.pipes[0].id
+            self.character.distance -= self.pipes[0].dx * self.dt
 
-        self.character.dy += int(400 * self.dt)
+            pygame.event.pump()
+
         if self.pipes[0].topRect.x + self.pipes[0].topRect.width < 0:
             self.pipes.pop(0)
         for pipe in self.pipes:
             pipe.topRect.x += int(pipe.dx * self.dt)
             pipe.bottomRect.x += int(pipe.dx * self.dt)
 
-        if self.character.rect.colliderect(
-            self.nearest_collidable_pipe().topRect
-        ) or self.character.rect.colliderect(self.nearest_collidable_pipe().bottomRect):
-            self.running = False
-
         if len(self.pipes) < Pipe.NUM_PIPES:
-            for _ in range(Pipe.NUM_PIPES - len(self.pipes)):
-                x = self.pipes[-1].topRect.right + random.randint(
-                    Pipe.MIN_PIPE_DISTANCE, Pipe.MAX_PIPE_DISTANCE
-                )
-                gap = random.randint(Pipe.MIN_GAP, Pipe.MAX_GAP)
-                topheight = random.randint(0, self.screen.height - gap)
-                bottomy = topheight + gap
-                bottomheight = self.screen.height - bottomy
-                self.pipes.append(Pipe(x, topheight, bottomy, bottomheight))
-
-        if (
-            self.character.rect.left > self.pipes[0].topRect.right
-            and not self.pipes[0].passed
-        ):
-            self.score += 1
-            self.pipes[0].passed = True
-
-        self.distance -= self.pipes[0].dx * self.dt
-        pygame.event.pump()
+            self.add_pipe()
+        
+        if self.train:
+            if not any([agent.alive for agent in self.agents]):
+                self.running = False
+        else:
+            if not self.character.alive:
+                self.running = False
 
     def render(self) -> None:
         self.screen.surface.fill("white")
-        self.character.rect = pygame.draw.rect(
-            self.screen.surface, "green", self.character.rect
-        )
+
+        if self.train:
+            for agent in self.agents:
+                if agent.alive:
+                    pygame.draw.rect(self.screen.surface, "blue", agent.rect)
+        else:
+            self.character.rect = pygame.draw.rect(
+                self.screen.surface, "green", self.character.rect
+            )
         for pipe in self.pipes:
             pygame.draw.rect(self.screen.surface, "red", pipe.topRect)
             pygame.draw.rect(self.screen.surface, "red", pipe.bottomRect)
@@ -120,21 +159,38 @@ class Game:
             self.add_pipe()
 
     def add_pipe(self) -> None:
+        gap = random.randint(Pipe.MIN_GAP, Pipe.MAX_GAP)
         if len(self.pipes) > 0:
             x = self.pipes[-1].topRect.right + random.randint(
                 Pipe.MIN_PIPE_DISTANCE, Pipe.MAX_PIPE_DISTANCE
             )
+            id = self.pipes[-1].id + 1
+            # Choose if next pipe will be above or below previous one
+            if random.randint(0, 1) == 0:
+                proposed_height = random.randint(self.pipes[-1].topRect.bottom - Pipe.MAX_HEIGHT_DIFF, self.pipes[-1].topRect.bottom - Pipe.MIN_HEIGHT_DIFF)
+                if proposed_height < 1:
+                    proposed_height = 1
+            else:
+                proposed_height = random.randint(self.pipes[-1].topRect.bottom + Pipe.MIN_HEIGHT_DIFF, self.pipes[-1].topRect.bottom + Pipe.MAX_HEIGHT_DIFF)
+                if proposed_height > (self.screen.height - gap) - 1:
+                    proposed_height = self.screen.height - gap - 1
+            topheight = proposed_height
         else:
             x = 450
-        gap = random.randint(Pipe.MIN_GAP, Pipe.MAX_GAP)
-        topheight = random.randint(0, self.screen.height - gap)
+            id = 1
+            topheight = random.randint(0, self.screen.height - gap)
         bottomy = topheight + gap
         bottomheight = self.screen.height - bottomy
-        self.pipes.append(Pipe(x, topheight, bottomy, bottomheight))
+        self.pipes.append(Pipe(x, topheight, bottomy, bottomheight, id))
 
     def nearest_collidable_pipe(self) -> Pipe:
-        for i in range(len(self.pipes)):
-            if self.pipes[i].topRect.right > self.character.rect.left:
-                return self.pipes[i]
+        if self.train:
+            for i in range(len(self.pipes)):
+                if self.pipes[i].topRect.right > self.agents[0].rect.left:
+                    return self.pipes[i]
+        else:
+            for i in range(len(self.pipes)):
+                if self.pipes[i].topRect.right > self.character.rect.left:
+                    return self.pipes[i]
 
         return self.pipes[0]
