@@ -24,7 +24,7 @@ class Game:
         self.train = train
 
         if train:
-            self.agents = [Agent() for _ in range(0, 20)]
+            self.agents = [Agent() for _ in range(0, 500)]
         else:
             self.character = Character()
         self.pipes: list[Pipe] = []
@@ -72,7 +72,7 @@ class Game:
             nearest_pipe = self.nearest_collidable_pipe()
             for agent in self.agents:
                 if (
-                    agent.model.call(
+                    agent.predict(
                         np.array(
                             [
                                 [
@@ -86,7 +86,7 @@ class Game:
                                 ]
                             ]
                         )
-                    )[0][0]
+                    )
                     > 0.5
                 ):
                     agent.jump()

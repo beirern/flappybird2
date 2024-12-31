@@ -1,5 +1,4 @@
-# Keras missing mypy stubs :(
-import keras  # type: ignore
+import numpy as np
 
 from .character import Character
 
@@ -20,12 +19,7 @@ class Agent(Character):
 
     def __init__(self) -> None:
         super().__init__()
-        self.model = keras.Sequential(
-            [
-                keras.Input(shape=(self.NUM_PARAMETERS,)),
-                # keras.layers.Dense(16),
-                keras.layers.Dense(8),
-                # keras.layers.Dense(2),
-                keras.layers.Dense(1, activation="sigmoid"),
-            ]
-        )
+        self.params = np.random.normal(size=(self.NUM_PARAMETERS,))
+
+    def predict(self, input_params: np.ndarray) -> float:
+        return 1 / (1 + np.exp(-np.dot(input_params, self.params)))

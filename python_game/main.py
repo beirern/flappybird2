@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from classes import Game
 from pygame import quit
@@ -9,8 +8,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--train", action=argparse.BooleanOptionalAction, default=False, help="Train AI"
 )
-
-os.environ["KERAS_BACKEND"] = "tensorflow"
 
 args = parser.parse_args()
 
