@@ -11,14 +11,20 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-score = 0
-while score < 1:
+if args.train:
+    epoch = 1
     game = Game(args.train)
-    score, distance = game.run()
+    ancestors = game.run_training()
 
-    text = f"Score: {score}, Distance: {str(round(distance, 2))}"
-    if args.train:
-        text += f", AI Score: {distance ** (score + 1)}"
-    print(text)
+    while epoch < 100:
+        game = Game(args.train, ancestors)
+        ancestors = game.run_training()
+        epoch += 1
+else:
+    score = 0
+
+    while score < 1:
+        game = Game(args.train)
+        score, distance = game.run_game()
 
 quit()

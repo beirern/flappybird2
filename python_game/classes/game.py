@@ -12,7 +12,7 @@ from .screen import Screen
 class Game:
     """The Game"""
 
-    def __init__(self, train) -> None:
+    def __init__(self, train, ancestors: list[Agent] | None = None) -> None:
         pygame.init()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -25,46 +25,71 @@ class Game:
 
         if train:
             self.agents = [Agent() for _ in range(0, 500)]
+            if ancestors is not None:
+                for count, agent in enumerate(self.agents):
+                    father = random.randint(0, len(ancestors) - 1)
+                    mother = random.randint(0, len(ancestors) - 1)
+                    if count % 4 == 0:
+                        # Father's genes
+                        for i in range(len(agent.params)):
+                            if i % 2 == 0:
+                                agent.params[i] = ancestors[father].params[i]
+                    elif count % 4 == 1:
+                        # Mother's genes
+                        for i in range(len(agent.params)):
+                            if i % 2 == 1:
+                                agent.params[i] = ancestors[mother].params[i]
+                    elif count % 4 == 2:
+                        # two ancestors genes
+                        for i in range(len(agent.params)):
+                            if i % 2 == 0:
+                                agent.params[i] = ancestors[father].params[i]
+                            else:
+                                agent.params[i] = ancestors[mother].params[i]
         else:
             self.character = Character()
         self.pipes: list[Pipe] = []
         self.init_pipes()
 
-    def run(self) -> tuple[int, int]:
+    def run_training(self) -> tuple[Agent, Agent]:
         while self.running:
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
-            if self.train:
-                for event in pygame.event.get():
-                    match event.type:
-                        case pygame.QUIT:
+            for event in pygame.event.get():
+                match event.type:
+                    case pygame.QUIT:
+                        self.running = False
+            self.update()
+            self.render()
+            self.dt = self.clock.tick(60) / 1000
+
+        best_agents = sorted(
+            self.agents,
+            key=lambda agent: agent.distance ** (agent.score + 1),
+            reverse=True,
+        )
+        return (best_agents[0], best_agents[1])
+
+    def run_game(self) -> tuple[int, int]:
+        while self.running:
+            # poll for events
+            # pygame.QUIT event means the user clicked X to close your window
+            for event in pygame.event.get():
+                match event.type:
+                    case pygame.QUIT:
+                        self.running = False
+                    case pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:
                             self.running = False
-            else:
-                for event in pygame.event.get():
-                    match event.type:
-                        case pygame.QUIT:
-                            self.running = False
-                        case pygame.KEYDOWN:
-                            if event.key == pygame.K_ESCAPE:
-                                self.running = False
-                            elif event.key == pygame.K_SPACE:
-                                self.character.jump()
+                        elif event.key == pygame.K_SPACE:
+                            self.character.jump()
 
             self.update()
             self.render()
             self.dt = self.clock.tick(60) / 1000
 
-        if self.train:
-            best_agent = sorted(
-                self.agents,
-                key=lambda agent: agent.distance ** (agent.score + 1),
-                reverse=True,
-            )[0]
-            score = best_agent.score
-            distance = int(best_agent.distance)
-        else:
-            score = self.character.score
-            distance = int(self.character.distance)
+        score = self.character.score
+        distance = int(self.character.distance)
         return score, distance
 
     def update(self) -> None:
