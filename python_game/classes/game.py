@@ -12,7 +12,13 @@ from .screen import Screen
 class Game:
     """The Game"""
 
-    def __init__(self, train, ancestors: list[Agent] | None = None) -> None:
+    def __init__(
+        self,
+        train,
+        father: Agent | None = None,
+        mother: Agent | None = None,
+        best_agent: Agent | None = None,
+    ) -> None:
         pygame.init()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -22,30 +28,34 @@ class Game:
         self.score = 0
         self.distance = 0.0
         self.train = train
+        # Speed up how fast game runs
+        self.speed_multiplier = 10.0
 
         if train:
             self.agents = [Agent() for _ in range(0, 500)]
-            if ancestors is not None:
+            if father is not None and mother is not None and best_agent is not None:
                 for count, agent in enumerate(self.agents):
-                    father = random.randint(0, len(ancestors) - 1)
-                    mother = random.randint(0, len(ancestors) - 1)
-                    if count % 4 == 0:
+                    if count == 0:
+                        if np.array_equal(best_agent.params, father.params):
+                            agent.params = best_agent.params.copy()
+                    elif count == 1:
+                        agent.params = father.params.copy()
+                    elif count == 2:
+                        agent.params = mother.params.copy()
+                    elif count % 3 == 0:
                         # Father's genes
                         for i in range(len(agent.params)):
-                            if i % 2 == 0:
-                                agent.params[i] = ancestors[father].params[i]
-                    elif count % 4 == 1:
+                            if random.randint(0, 1) == 0:
+                                agent.params[i] = (
+                                    random.randint(-7, 7) / 8.0
+                                ) + father.params[i].copy()
+                    elif count % 3 == 1:
                         # Mother's genes
                         for i in range(len(agent.params)):
-                            if i % 2 == 1:
-                                agent.params[i] = ancestors[mother].params[i]
-                    elif count % 4 == 2:
-                        # two ancestors genes
-                        for i in range(len(agent.params)):
-                            if i % 2 == 0:
-                                agent.params[i] = ancestors[father].params[i]
-                            else:
-                                agent.params[i] = ancestors[mother].params[i]
+                            if random.randint(0, 1) == 0:
+                                agent.params[i] = (
+                                    random.randint(-7, 7) / 8.0
+                                ) + mother.params[i].copy()
         else:
             self.character = Character()
         self.pipes: list[Pipe] = []
@@ -61,11 +71,11 @@ class Game:
                         self.running = False
             self.update()
             self.render()
-            self.dt = self.clock.tick(60) / 1000
+            self.dt = self.clock.tick(60) / 1000 * self.speed_multiplier
 
         best_agents = sorted(
             self.agents,
-            key=lambda agent: agent.distance ** (agent.score + 1),
+            key=lambda agent: agent.distance,
             reverse=True,
         )
         return (best_agents[0], best_agents[1])
@@ -106,8 +116,6 @@ class Game:
                                     nearest_pipe.bottomRect.top,
                                     nearest_pipe.topRect.left,
                                     nearest_pipe.topRect.right,
-                                    0,
-                                    self.screen.height,
                                 ]
                             ]
                         )
