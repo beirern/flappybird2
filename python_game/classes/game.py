@@ -29,7 +29,8 @@ class Game:
         self.distance = 0.0
         self.train = train
         # Speed up how fast game runs
-        self.speed_multiplier = 10.0
+        # idk if this actually does it correctly
+        self.speed_multiplier = 1.0
 
         if train:
             self.agents = [Agent() for _ in range(0, 500)]
