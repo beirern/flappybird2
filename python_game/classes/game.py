@@ -37,26 +37,29 @@ class Game:
             if father is not None and mother is not None and best_agent is not None:
                 for count, agent in enumerate(self.agents):
                     if count == 0:
-                        if np.array_equal(best_agent.params, father.params):
-                            agent.params = best_agent.params.copy()
+                        # Keep best agent unchanged (elitism)
+                        agent.params = best_agent.params.copy()
                     elif count == 1:
+                        # Keep father unchanged
                         agent.params = father.params.copy()
                     elif count == 2:
+                        # Keep mother unchanged
                         agent.params = mother.params.copy()
-                    elif count % 3 == 0:
-                        # Father's genes
+                    else:
+                        # Crossover: randomly select genes from father or mother
+                        agent.params = np.zeros_like(father.params)
                         for i in range(len(agent.params)):
-                            if random.randint(0, 1) == 0:
-                                agent.params[i] = (
-                                    random.randint(-7, 7) / 8.0
-                                ) + father.params[i].copy()
-                    elif count % 3 == 1:
-                        # Mother's genes
+                            if random.random() < 0.5:
+                                agent.params[i] = father.params[i]
+                            else:
+                                agent.params[i] = mother.params[i]
+
+                        # Mutation: apply to 20% of genes with small changes
+                        mutation_rate = 0.2
+                        mutation_strength = 0.05
                         for i in range(len(agent.params)):
-                            if random.randint(0, 1) == 0:
-                                agent.params[i] = (
-                                    random.randint(-7, 7) / 8.0
-                                ) + mother.params[i].copy()
+                            if random.random() < mutation_rate:
+                                agent.params[i] += random.uniform(-mutation_strength, mutation_strength)
         else:
             self.character = Character()
         self.pipes: list[Pipe] = []
@@ -107,22 +110,32 @@ class Game:
         if self.train:
             nearest_pipe = self.nearest_collidable_pipe()
             for agent in self.agents:
-                if (
-                    agent.predict(
-                        np.array(
-                            [
-                                [
-                                    agent.dy,
-                                    nearest_pipe.topRect.bottom,
-                                    nearest_pipe.bottomRect.top,
-                                    nearest_pipe.topRect.left,
-                                    nearest_pipe.topRect.right,
-                                ]
-                            ]
-                        )
-                    )
-                    > 0.5
-                ):
+                # Normalize inputs to [-1, 1] range
+                # Bird velocity: normalize to reasonable range
+                normalized_dy = agent.dy / 300.0  # Max reasonable velocity
+
+                # Bird Y position relative to screen
+                bird_y_norm = (agent.rect.y - self.screen.height / 2) / (self.screen.height / 2)
+
+                # Gap center Y position
+                gap_center_y = (nearest_pipe.topRect.bottom + nearest_pipe.bottomRect.top) / 2
+                gap_center_norm = (gap_center_y - self.screen.height / 2) / (self.screen.height / 2)
+
+                # Distance to pipe (horizontal)
+                pipe_distance_norm = (nearest_pipe.topRect.left - agent.rect.right) / self.screen.width
+
+                # Relative position: bird Y - gap center Y
+                relative_y_norm = (agent.rect.y - gap_center_y) / (self.screen.height / 2)
+
+                inputs = np.array([
+                    normalized_dy,
+                    bird_y_norm,
+                    gap_center_norm,
+                    pipe_distance_norm,
+                    relative_y_norm
+                ])
+
+                if agent.predict(inputs) > 0.5:
                     agent.jump()
                 agent.move(self.dt, self.screen)
 
@@ -137,7 +150,7 @@ class Game:
                     ):
                         agent.last_pipe_passed = self.pipes[0].id
                         agent.score += 1
-                    agent.distance -= self.pipes[0].dx * self.dt
+                    agent.distance += abs(self.pipes[0].dx * self.dt)
         else:
             self.character.move(self.dt, self.screen)
             if self.character.rect.colliderect(
@@ -152,7 +165,7 @@ class Game:
             ):
                 self.character.score += 1
                 self.character.last_pipe_passed = self.pipes[0].id
-            self.character.distance -= self.pipes[0].dx * self.dt
+            self.character.distance += abs(self.pipes[0].dx * self.dt)
 
             pygame.event.pump()
 
